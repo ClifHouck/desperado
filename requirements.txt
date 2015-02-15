@@ -1,0 +1,5 @@
+Pillow==2.3.0
+pycrypto==2.6.1
+requests==2.4.1
+urllib3==1.7.1
+wheel==0.23.0
