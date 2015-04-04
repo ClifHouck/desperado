@@ -1,14 +1,20 @@
-import pdb
+import argparse
 from functools import reduce
 
 from desperado import auth
 from desperado import inventory
-from desperado import data 
+from desperado import data
 from desperado import market
 from desperado.currency import Dollars
 
 import credentials
 
+#TODO: Support basic operations on inventory and market.
+# - List inventory by app
+# - list item on market item by id/app
+# - list users current market listings
+# - rescind listing on market by listing ID
+# - support login credentials through command line or environment variables
 
 def automated_steamguard():
     return auth.get_steamguard_code_automated_imap(*credentials.mail())
@@ -39,12 +45,46 @@ def sell_capsules():
         if response == 'y':
             try:
                 market.post_item_for_sale(session, cap, desired_price)
-            except market.ItemSaleError as sale_error:
+            except market.ItemSaleError:
                 print("Got failure! Quitting...")
                 quit()
             print('Posted item for sale!')
 
+
+def inventory_list(app_name):
+    if app_name not in data.APP_SHORT_NAME_TO_ID.keys():
+        raise Exception("'%(app_name)s' not a recognized app!" % {
+                            'app_name': app_name})
+
+    session = auth.login(*credentials.steam(),
+                         get_steamguard_code = automated_steamguard)
+    inv = inventory.retrieve_profile_inventory(session, data.app_id(app_name))
+    for item in inv:
+        print(item)
+
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Run commands related to "
+        "the Steam marketplace and inventory.")
+    subparsers = parser.add_subparsers(title="command",
+                                       description="Steam commands to run.",
+                                       dest='subparser_name',
+                                       help="")
+
+    # Market listing parser
+    inv_list_parser = subparsers.add_parser('inventory-list',
+                                        help='List the inventory for a '
+                                             'particular steam app.')
+    inv_list_parser.add_argument('app_name', help='Name of the steam app.')
+
+    args = parser.parse_args()
+    print(args)
+
+    if args.subparser_name == "inventory-list":
+        inventory_list(args.app_name)
+
+    quit()
+
+
     session = auth.login(*credentials.steam(), get_steamguard_code = automated_steamguard)
     inv     = inventory.retrieve_profile_inventory(session, data.app_id('csgo'))
 
@@ -59,7 +99,7 @@ if __name__ == '__main__':
         minimum_price = item.get_price_data(session).low_price
         print(item.market_name() + ": " + str(minimum_price))
         total += market.get_desired_price(minimum_price.to_cents())
-    
+
     print("Value of non-stattrak CSGO inventory: " + str(Dollars.from_cents(total)))
 
     response = input('Sell all these items?')

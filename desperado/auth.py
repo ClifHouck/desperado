@@ -1,4 +1,4 @@
-from Crypto.Cipher import PKCS1_OAEP, PKCS1_v1_5
+from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from PIL import Image
 from io import BytesIO
@@ -127,10 +127,10 @@ def do_login(session, username, encrypted_password, rsa_timestamp,
 
 def solve_captcha_manual(gid):
     """ Default manual function for solving the Steam login captcha. """
-    image = auth.get_captcha_image(gid)
+    image = get_captcha_image(gid)
     # TODO: Use Python's temp file interface.
     image.save("./test.png")
-    webbrowser.open_new_tab("./test.png")
+    # webbrowser.open_new_tab("./test.png")
     text = input('solve_captcha --->')
     return text
 
@@ -146,6 +146,7 @@ def get_steamguard_code_automated_imap(server, login, password,
     """ Automated method to get SteamGuard code. """
     AUTH_CODE_REGEX = "<h3>([0-9A-Z]+)</h3>"
 
+    print server, login, password
     mail = imaplib.IMAP4_SSL(server)
     mail.login(login, password)
     mail.select(mailbox_location)
@@ -256,6 +257,7 @@ def login(username, password,
 
     # The RSA information is encoded as hex strings.
     # Transform to integers.
+    print response_dict
     rsa_mod = long(response_dict['publickey_mod'], 16)
     pub_exp = long(response_dict['publickey_exp'], 16)
 
