@@ -144,12 +144,10 @@ def get_steamguard_code_automated_imap(server, login, password,
                                        max_tries = 10,
                                        poll_wait = 6):
     """ Automated method to get SteamGuard code. """
-    AUTH_CODE_REGEX = "<h3>([0-9A-Z]+)</h3>"
+    AUTH_CODE_REGEX = "<h2>([0-9A-Z]+)</h2>"
 
-    print server, login, password
     mail = imaplib.IMAP4_SSL(server)
     mail.login(login, password)
-    mail.select(mailbox_location)
     
     # TODO: Is there a more robust way to check?
     # Polling works but an event-driven model would be nicer.
@@ -158,9 +156,11 @@ def get_steamguard_code_automated_imap(server, login, password,
     while latest_email_uid == 0 and tries < max_tries:
         tries += 1
         # It seems we need to re-select the location to get fresh results from the search.
-        mail.select(mailbox_location)
-        result, data = mail.uid('search', None, 
-                'UNSEEN FROM "noreply@steampowered.com" SUBJECT "Access from new computer"')
+        result, data = mail.uid('SEARCH', None,
+                '(UNSEEN FROM "noreply@steampowered.com" SUBJECT "Access from new device")')
+        if result != 'OK':
+            raise Exception("Got '%(result)s' result when trying "
+                            "to search for emails." % {'result': result})
         if len(data) and len(data[0]):
             latest_email_uid = data[0].split()[-1]
         time.sleep(poll_wait)
@@ -173,7 +173,8 @@ def get_steamguard_code_automated_imap(server, login, password,
 
     # Extract the code from the email's body.
     raw_email = data[0][1]
-    message = email.message_from_bytes(raw_email)
+    message = email.message_from_string(raw_email)
+
     match = re.search(AUTH_CODE_REGEX, message.as_string())
     auth_code = None
     if match:
@@ -257,7 +258,6 @@ def login(username, password,
 
     # The RSA information is encoded as hex strings.
     # Transform to integers.
-    print response_dict
     rsa_mod = long(response_dict['publickey_mod'], 16)
     pub_exp = long(response_dict['publickey_exp'], 16)
 
@@ -287,4 +287,3 @@ def login(username, password,
     __save_authorized_session(session)
 
     return session
-         
