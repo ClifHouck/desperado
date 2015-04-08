@@ -14,10 +14,29 @@ INVENTORY_API = {
          }
 }
 
+class InventoryIterator(object):
+    def __init__(self, inventory_obj):
+        self.index = -1
+        self.length = len(inventory_obj.items)
+        self.items = inventory_obj.items
+
+    def next(self):
+        self.index += 1
+        if self.index >= self.length:
+            raise StopIteration("No more items in the inventory!")
+        return self.items[self.index]
+
+    def __iter__(self):
+        return self
+        
+
 class Inventory(object):
     def __init__(self, profile_id, items):
         self.profile_id = profile_id
         self.items      = items
+
+    def __iter__(self):
+        return InventoryIterator(self)
 
 class InventoryItem(object):
     def __init__(self, id_json, description_json):
@@ -26,6 +45,11 @@ class InventoryItem(object):
         self.tags = {}
         self.__parse_tags()
         self.price_data = None
+
+    def __str__(self):
+        market_name = str(''.join([c for c in self.market_name() if ord(c) < 128]))
+        return ' '.join([str(self.id()), ":", market_name, "-",
+                         "Tradable" if self.can_trade() else "Not tradable"  ])
 
     def get_price_data(self, session):
         if not self.can_trade():
