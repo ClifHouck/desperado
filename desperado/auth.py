@@ -12,6 +12,12 @@ import re
 import requests
 import time
 
+import logging
+
+debug_requests = False
+if debug_requests:
+    logging.basicConfig(level=logging.DEBUG)
+
 
 LOGIN_API = {
         'refresh_captcha' : {
@@ -98,7 +104,12 @@ def get_captcha_image(gid):
 def get_rsa_key(session, username):
     payload = { 'donotcache' : int(time.time()), 'username' : username }
     result = session.requests_session.post(LOGIN_API['get_rsa_key']['url'], data=payload)
-    return result.json()
+    json_result = result.json()
+    
+    if not json_result['success']:
+        raise Exception("Request for RSA key failed!")
+
+    return json_result
 
 def get_encrypted_password(password, rsa_mod, pub_exp):
     """ Encrypts a Steam password for web login using RSA with PKCS1_v1_5. 
@@ -155,7 +166,9 @@ def get_steamguard_code_automated_imap(server, login, password,
     latest_email_uid = 0
     while latest_email_uid == 0 and tries < max_tries:
         tries += 1
-        # It seems we need to re-select the location to get fresh results from the search.
+        # It seems we need to re-select the location each time to get fresh 
+        # results from the search.
+        mail.select(mailbox_location)
         result, data = mail.uid('SEARCH', None,
                 '(UNSEEN FROM "noreply@steampowered.com" SUBJECT "Access from new device")')
         if result != 'OK':

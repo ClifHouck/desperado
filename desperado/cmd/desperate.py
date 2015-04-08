@@ -3,6 +3,7 @@ import argparse
 from desperado import auth
 from desperado import data
 from desperado import inventory
+from desperado import market
 
 import credentials
 
@@ -18,6 +19,7 @@ def inventory_list(app_name, tradable=False):
 
     session = auth.login(*credentials.steam(),
                          get_steamguard_code=automated_steamguard)
+
     inv = inventory.retrieve_profile_inventory(session, data.app_id(app_name))
     items = inv.items
 
@@ -26,6 +28,16 @@ def inventory_list(app_name, tradable=False):
 
     for item in items:
         unicode_print(str(item))
+
+
+def market_listings():
+    session = auth.login(*credentials.steam(),
+                         get_steamguard_code=automated_steamguard)
+
+    listings = market.get_current_listings(session)
+
+    for listing in listings:
+        print(listing)
 
 
 def unicode_print(unicode_string):
@@ -40,16 +52,21 @@ if __name__ == '__main__':
                                        dest='subparser_name',
                                        help="Command to run.")
 
-    # Market listing parser
+    # Inventory listing parser
     inv_list_parser = subparsers.add_parser('inventory-list',
-                                        help='List the inventory for a '
-                                             'particular steam app.')
+                                            help='List the inventory for a '
+                                                 'particular steam app.')
     inv_list_parser.add_argument('app_name', help='Name of the steam app.')
-    inv_list_parser.add_argument('--tradable', action='store_true', 
+    inv_list_parser.add_argument('--tradable', action='store_true',
                                  help='Only list items which are tradable.')
 
+    # Market listing parser
+    market_list_parser = subparsers.add_parser('market-listings',
+                                               help='List the user\'s current '
+                                                    'market listings.')
+
     # TODO(ClifHouck) Sub-commands to support
-    # - market-listings list users current market listings
+    # - market-listings list user's current market listings
     # - listing-create - list an item on the steam market
     # - listing-delete - delete a listing from the steam market
     # - buy - attempt to buy an item from the steam market.
@@ -58,3 +75,5 @@ if __name__ == '__main__':
 
     if args.subparser_name == "inventory-list":
         inventory_list(args.app_name, args.tradable)
+    elif args.subparser_name == "market-listings":
+        market_listings()

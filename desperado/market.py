@@ -2,6 +2,7 @@ import copy
 from lxml import html
 import math
 import re
+import string
 import unittest
 import urllib
 
@@ -136,35 +137,55 @@ def post_item_for_sale(session, item, price_in_cents):
 
     return result
 
+
 class MarketListing(object):
-    def __init__(self, listing_id, item_name, item_link, game_name):
-        self.id         = listing_id
-        self.item_name  = item_name
-        self.item_link  = item_link
-        self.game_name  = game_name
+    def __init__(self, listing_id, item_name, item_link, game_name, 
+                 sale_price, receive_price):
+        self.id = listing_id
+        self.item_name = item_name
+        self.item_link = item_link
+        self.game_name = game_name
+        self.sale_price = sale_price
+        self.receive_price = receive_price
 
     def __str__(self):
-        return "".join(["[", str(self.id), "]: ", self.item_name])
+        item_name = ''.join([c for c in self.item_name if ord(c) < 128])
+        return "".join(["[", str(self.id), "]: ", item_name, ' @ ', 
+                        str(self.sale_price), '(', str(self.receive_price), ')'])
+
 
 def get_current_listings(session):
     page = session.requests_session.get('https://steamcommunity.com/market/')
     tree = html.fromstring(page.text)
-    listing_divs = tree.xpath('//div[@class="market_listing_item_name_block"]')
+    listing_divs = tree.xpath("//div[contains(@class, 'market_listing_row')]")
 
     listings = []
-    for div in listing_divs:
-        name_id = div[0].attrib['id']
+    for row_div in listing_divs:
+        name_div = row_div.xpath('.//div[@class="market_listing_item_name_block"]')[0]
+        name_id = name_div[0].attrib['id']
         listing_id = re.search("(\d+)", name_id).group(1)
 
         try:
-            item_anchor = div[0][0]
+            item_anchor = name_div[0][0]
         except IndexError:
             continue
 
         item_link = item_anchor.attrib['href']
         item_name = item_anchor.text
-        game_name = div[2].text
-        listings.append(MarketListing(listing_id, item_name, item_link, game_name))
+        game_name = name_div[2].text
+
+        market_table = row_div.xpath('.//span[@class="market_listing_price"]')[0]
+        sale_price = currency.Dollars.from_string(market_table[0][0].text.strip())
+        receive_price = market_table[0][2].text.strip()
+        receive_price = string.replace(receive_price, '(', '')
+        receive_price = currency.Dollars.from_string(string.replace(receive_price, ')', ''))
+
+        listings.append(MarketListing(listing_id, 
+                                      item_name, 
+                                      item_link, 
+                                      game_name,
+                                      sale_price,
+                                      receive_price))
 
     return listings
 
