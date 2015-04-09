@@ -113,27 +113,26 @@ def get_item_price_history(session, app_id, market_hash_name):
 class ItemSaleError(RequestFailure):
     pass
 
-def post_item_for_sale(session, item, price_in_cents):
+def post_item_for_sale(session, item_id, app_id, price_in_cents):
     """ price_in_cents - The price (before fees!) to post the item at. """
     headers = {
             'Referer': 'https://steamcommunity.com/profiles/' + str(session.profile_id()) + '/inventory',
             'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.120 Safari/537.36'
     }
     session_id = copy.deepcopy(session.requests_session.cookies['sessionid'])
-    session_id = urllib.parse.unquote(session_id)
+    session_id = urllib.unquote(session_id)
     payload = { 'sessionid': session_id,
-                'appid': int(item.app_id()),
+                'appid': int(app_id),
                 'contextid': 2, # TODO(ClifHouck: Why is this 2? Is that inventory context?
-                'assetid': item.id(),
+                'assetid': item_id,
                 'amount': 1, # TODO: Is this ever not 1?
                 'price': price_in_cents}
 
     result = session.requests_session.post('https://steamcommunity.com/market/sellitem/', headers = headers, data = payload)
 
     if result.status_code != 200:
-        pdb.set_trace()
         raise ItemSaleError("post_item_for_sale: Item sale request error!",
-                (session, item, price_in_cents, result))
+                (session, item_id, app_id, price_in_cents, result))
 
     return result
 
@@ -197,9 +196,8 @@ def remove_listing(session, listing_id):
             'referer': 'https://steamcommunity.com/market/',
             'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/37.0.2062.120 Safari/537.36'
     }
-
     session_id = copy.deepcopy(session.requests_session.cookies['sessionid'])
-    session_id = urllib.parse.unquote(session_id)
+    session_id = urllib.unquote(session_id)
     payload = { 'sessionid': session_id }
     result = session.requests_session.post('https://steamcommunity.com/market/removelisting/' + str(listing_id),
                 headers = headers, data = payload)
